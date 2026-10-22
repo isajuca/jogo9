@@ -2,30 +2,32 @@ import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
 import {
   Trophy,
-  Flame,
-  Timer,
-  Heart,
   RotateCcw,
   Trash2,
   X,
   Check,
-  ArrowRight,
-  UserPlus
+  ChevronRight,
+  Home,
+  Timer,
+  AlertCircle,
+  User,
+  Award
 } from 'lucide-react';
 import { INITIAL_QUESTIONS } from './data/questions';
 
-const QUESTION_TIME = 25; // segundos por pergunta
-const MAX_LIVES = 3;
+const QUESTION_TIME = 30; // segundos por pergunta
 const QUESTIONS_PER_MATCH = 10; // 10 perguntas sorteadas por partida (1/10 a 10/10)
 
 const SCENES = {
   welcome: '/assets/scene_welcome.jpg',
+  howto: '/assets/scene_howto.jpg',
   question: '/assets/scene_question.jpg',
   correct: '/assets/scene_correct.jpg',
-  wrong: '/assets/scene_wrong.jpg'
+  wrong: '/assets/scene_wrong.jpg',
+  result: '/assets/scene_result.jpg'
 };
 
-// Embaralhamento Fisher-Yates para sortear questões variadas do banco de 50 questões
+// Embaralhamento Fisher-Yates para sortear 10 questões variadas do banco
 function getRandomQuestions(pool, count = QUESTIONS_PER_MATCH) {
   const copy = [...pool];
   for (let i = copy.length - 1; i > 0; i--) {
@@ -35,102 +37,98 @@ function getRandomQuestions(pool, count = QUESTIONS_PER_MATCH) {
   return copy.slice(0, count);
 }
 
-// Folhinha decorativa em SVG para os cantos do card pergaminho
-function CornerLeafSVG({ size = 46 }) {
+// Logo oficial "AstroLearn" usando a imagem enviada pela usuária
+function AstroLearnBrandLogo() {
   return (
-    <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-      <path
-        d="M54 10C34 10 16 24 12 48C36 44 50 28 54 10Z"
-        fill="url(#leafGrad1)"
-        stroke="#1e6b24"
-        strokeWidth="2"
-      />
-      <path
-        d="M12 48C24 36 38 24 54 10"
-        stroke="#b9f59c"
-        strokeWidth="2.2"
-        strokeLinecap="round"
-      />
-      <path
-        d="M16 26C10 18 14 8 24 6C28 16 24 24 16 26Z"
-        fill="url(#leafGrad2)"
-      />
+    <div className="astro-brand-logo">
+      <div className="astro-logo-img-wrap">
+        <img
+          src="/assets/logo_astrolearn.jpg"
+          alt="Logo AstroLearn"
+          className="astro-official-logo-img"
+        />
+      </div>
+      <span className="astro-logo-text">
+        <strong>Astro</strong>Learn
+      </span>
+    </div>
+  );
+}
+
+// Ícone de Planeta Anelado 3D no topo do card de pergunta
+function QuestionPlanetSVG() {
+  return (
+    <svg width="56" height="44" viewBox="0 0 68 52" fill="none" className="question-planet-svg">
       <defs>
-        <linearGradient id="leafGrad1" x1="12" y1="10" x2="54" y2="48" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#86ef5a" />
-          <stop offset="1" stopColor="#268c29" />
+        <linearGradient id="qPlanetGrad" x1="20" y1="8" x2="48" y2="42" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#60a5fa" />
+          <stop offset="0.55" stopColor="#6366f1" />
+          <stop offset="1" stopColor="#312e81" />
         </linearGradient>
-        <linearGradient id="leafGrad2" x1="10" y1="6" x2="28" y2="26" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#a3f77b" />
-          <stop offset="1" stopColor="#38a832" />
+        <linearGradient id="qRingGrad" x1="6" y1="36" x2="62" y2="16" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#38bdf8" />
+          <stop offset="0.5" stopColor="#818cf8" />
+          <stop offset="1" stopColor="#e879f9" />
         </linearGradient>
       </defs>
+      <circle cx="34" cy="26" r="15" fill="url(#qPlanetGrad)" />
+      <ellipse
+        cx="34"
+        cy="27"
+        rx="26"
+        ry="7.5"
+        transform="rotate(-20 34 27)"
+        stroke="url(#qRingGrad)"
+        strokeWidth="3.2"
+        fill="none"
+      />
     </svg>
   );
 }
 
-// Ícone de broto verde (duas folhas) no topo do card de pergunta
-function SproutIconSVG() {
+// Estrela 3D Dourada da Tela de Jogo Concluído
+function GoldStarSVG() {
   return (
-    <svg width="46" height="40" viewBox="0 0 56 48" fill="none">
-      <path
-        d="M28 42C28 26 16 12 4 12C4 26 14 38 28 42Z"
-        fill="url(#sproutLeft)"
-      />
-      <path
-        d="M28 42C28 24 42 8 54 8C54 24 42 38 28 42Z"
-        fill="url(#sproutRight)"
-      />
-      <path d="M28 46V26" stroke="#1b7a2e" strokeWidth="3.5" strokeLinecap="round" />
+    <svg width="46" height="46" viewBox="0 0 56 56" fill="none" className="gold-star-svg">
       <defs>
-        <linearGradient id="sproutLeft" x1="4" y1="12" x2="28" y2="42" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#6ee755" />
-          <stop offset="1" stopColor="#1b842c" />
-        </linearGradient>
-        <linearGradient id="sproutRight" x1="54" y1="8" x2="28" y2="42" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#88f26b" />
-          <stop offset="1" stopColor="#239636" />
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-}
-
-// Ícone da Lâmpada 3D iluminada para a caixa de dica
-function LightbulbSVG() {
-  return (
-    <svg width="42" height="42" viewBox="0 0 64 64" fill="none">
-      <circle cx="32" cy="26" r="22" fill="rgba(250, 204, 21, 0.25)" />
-      <path
-        d="M32 8C22.06 8 14 16.06 14 26C14 32.3 17.25 37.85 22.15 41.05C23.6 42 24.5 43.6 24.75 45.35L25 47H39L39.25 45.35C39.5 43.6 40.4 42 41.85 41.05C46.75 37.85 50 32.3 50 26C50 16.06 41.94 8 32 8Z"
-        fill="url(#bulbGlow)"
-        stroke="#d97706"
-        strokeWidth="2"
-      />
-      <path
-        d="M24 20C25.5 16.5 28.5 14.5 32 14.5"
-        stroke="#ffffff"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      <rect x="25" y="47" width="14" height="5" rx="2.5" fill="#94a3b8" stroke="#475569" strokeWidth="1.5" />
-      <rect x="26.5" y="52" width="11" height="4" rx="2" fill="#64748b" stroke="#475569" strokeWidth="1.5" />
-      <path d="M29 56C29 57.65 30.35 59 32 59C33.65 59 35 57.65 35 56H29Z" fill="#475569" />
-      <defs>
-        <radialGradient id="bulbGlow" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(28 22) rotate(55) scale(26)">
+        <linearGradient id="starGoldGrad" x1="12" y1="6" x2="44" y2="50" gradientUnits="userSpaceOnUse">
           <stop stopColor="#fef08a" />
-          <stop offset="0.55" stopColor="#facc15" />
-          <stop offset="1" stopColor="#eab308" />
-        </radialGradient>
+          <stop offset="0.5" stopColor="#facc15" />
+          <stop offset="1" stopColor="#ea580c" />
+        </linearGradient>
       </defs>
+      <path
+        d="M28 5L34.9 19.1L50.5 21.3L39.2 32.3L41.9 47.8L28 40.5L14.1 47.8L16.8 32.3L5.5 21.3L21.1 19.1L28 5Z"
+        fill="url(#starGoldGrad)"
+        stroke="#fef9c3"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+// Brilho vetorial de 4 pontas (sem emoji)
+function SparkleStarSVG({ size = 18, color = '#67e8f9', className = '' }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      className={className}
+    >
+      <path
+        d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z"
+        fill={color}
+      />
     </svg>
   );
 }
 
 export default function App() {
-  // Telas: 'home' | 'playing' | 'result'
+  // Telas: 'home' | 'howto' | 'playing' | 'result'
   const [screen, setScreen] = useState('home');
-  // Modal do Ranking
   const [showRankingModal, setShowRankingModal] = useState(false);
 
   // Dados obrigatórios do aluno (Nome e Turma: '9º A' ou '9º B')
@@ -138,11 +136,8 @@ export default function App() {
   const [playerClass, setPlayerClass] = useState('');
   const [formError, setFormError] = useState('');
 
-  // Ranking separado por turma (inicia 100% limpo)
+  // Ranking separado por turma (9º A e 9º B)
   const [ranking, setRanking] = useState(() => {
-    localStorage.removeItem('astrolearn_ranking_v2');
-    localStorage.removeItem('ecomissao_ranking_v1');
-    localStorage.removeItem('astrolearn_ranking_clean_v1');
     const saved = localStorage.getItem('astrolearn_ranking_turmas_v1');
     return saved ? JSON.parse(saved) : [];
   });
@@ -151,8 +146,6 @@ export default function App() {
   const [gameQuestions, setGameQuestions] = useState(() => getRandomQuestions(INITIAL_QUESTIONS));
   const [currentIndex, setCurrentIndex] = useState(0);
   const [score, setScore] = useState(0);
-  const [lives, setLives] = useState(MAX_LIVES);
-  const [planetHealth, setPlanetHealth] = useState(70);
   const [streak, setStreak] = useState(0);
   const [maxStreak, setMaxStreak] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -162,7 +155,7 @@ export default function App() {
 
   const timerRef = useRef(null);
 
-  // Pré-carregar as 4 ilustrações de fundo para transição instantânea
+  // Pré-carregar todas as 6 cenas espaciais para transição instantânea
   useEffect(() => {
     Object.values(SCENES).forEach((src) => {
       const img = new Image();
@@ -192,28 +185,31 @@ export default function App() {
     return () => clearInterval(timerRef.current);
   }, [screen, isAnswered, currentIndex, showRankingModal]);
 
-  // Validar Nome e Turma e iniciar o jogo
-  const startGame = () => {
+  // Validar Nome e Turma na Tela 1 e avançar para a Tela 2 ("COMO FUNCIONA?")
+  const handleGoToHowTo = () => {
     const trimmedName = playerName.trim();
     if (!trimmedName && !playerClass) {
-      setFormError('Por favor, digite seu nome e escolha sua turma (9º A ou 9º B) para começar!');
+      setFormError('Digite seu nome e escolha sua turma (9º A ou 9º B) para começar.');
       return;
     }
     if (!trimmedName) {
-      setFormError('Por favor, digite seu nome antes de começar!');
+      setFormError('Por favor, digite seu nome antes de começar.');
       return;
     }
     if (!playerClass) {
-      setFormError('Por favor, selecione sua turma (9º A ou 9º B) antes de começar!');
+      setFormError('Por favor, selecione sua turma (9º A ou 9º B).');
       return;
     }
 
     setFormError('');
+    setScreen('howto');
+  };
+
+  // Iniciar as 10 perguntas após clicar em "ENTENDI! >"
+  const startGame = () => {
     setGameQuestions(getRandomQuestions(INITIAL_QUESTIONS, QUESTIONS_PER_MATCH));
     setCurrentIndex(0);
     setScore(0);
-    setLives(MAX_LIVES);
-    setPlanetHealth(70);
     setStreak(0);
     setMaxStreak(0);
     setCorrectCount(0);
@@ -223,7 +219,7 @@ export default function App() {
     setScreen('playing');
   };
 
-  // Verificar resposta
+  // Verificar resposta escolhida (Verdadeiro ou Falso)
   const handleAnswer = (answer) => {
     if (isAnswered) return;
     clearInterval(timerRef.current);
@@ -243,20 +239,16 @@ export default function App() {
       setStreak(newStreak);
       setMaxStreak((prev) => Math.max(prev, newStreak));
       setCorrectCount((prev) => prev + 1);
-      setPlanetHealth((prev) => Math.min(100, prev + 8));
     } else {
       setStreak(0);
-      setLives((prev) => Math.max(0, prev - 1));
-      setPlanetHealth((prev) => Math.max(10, prev - 15));
     }
   };
 
-  // Ir para a próxima pergunta
+  // Avançar para a próxima pergunta ou concluir o jogo
   const nextQuestion = () => {
-    const outOfLives = lives <= 0;
     const isLast = currentIndex + 1 >= gameQuestions.length;
 
-    if (outOfLives || isLast) {
+    if (isLast) {
       finishGame();
     } else {
       setCurrentIndex((prev) => prev + 1);
@@ -266,45 +258,47 @@ export default function App() {
     }
   };
 
-  // Concluir partida e registrar no Ranking da respectiva turma
+  // Concluir partida e salvar no Ranking da turma (9º A ou 9º B)
   const finishGame = () => {
     const newEntry = {
       id: Date.now(),
       name: playerName.trim(),
       turma: playerClass,
       score,
-      planetHealth,
       correct: correctCount
     };
 
-    const updated = [...ranking, newEntry].sort((a, b) => b.score - a.score);
+    const updated = [...ranking, newEntry].sort((a, b) => {
+      if (b.correct !== a.correct) return b.correct - a.correct;
+      return b.score - a.score;
+    });
     setRanking(updated);
     setScreen('result');
 
-    if (lives > 0 && correctCount >= Math.ceil(gameQuestions.length * 0.6)) {
+    if (correctCount >= Math.ceil(gameQuestions.length * 0.6)) {
       confetti({
-        particleCount: 100,
-        spread: 75,
+        particleCount: 110,
+        spread: 80,
         origin: { y: 0.6 }
       });
     }
   };
 
-  // Limpar ranking de uma turma específica ou de ambas
   const clearClassRanking = (turmaAlvo) => {
     setRanking((prev) => prev.filter((item) => item.turma !== turmaAlvo));
   };
 
-  // Filtrar rankings separados para 9º A e 9º B
   const ranking9A = ranking.filter((r) => r.turma === '9º A');
   const ranking9B = ranking.filter((r) => r.turma === '9º B');
 
-  // Determinar qual dos 4 cenários ilustrados exibir no fundo
   const currentQ = gameQuestions[currentIndex];
   const isCurrentCorrect = isAnswered && currentQ && selectedAnswer === currentQ.correta;
 
+  // Seleciona o cenário exato entre os 6 painéis da referência
   let activeBg = SCENES.welcome;
-  if (screen === 'playing') {
+  if (screen === 'howto') {
+    activeBg = SCENES.howto;
+  } else if (screen === 'playing') {
     if (!isAnswered) {
       activeBg = SCENES.question;
     } else if (isCurrentCorrect) {
@@ -313,112 +307,99 @@ export default function App() {
       activeBg = SCENES.wrong;
     }
   } else if (screen === 'result') {
-    activeBg = lives > 0 ? SCENES.correct : SCENES.wrong;
+    activeBg = SCENES.result;
   }
 
   const progressPercentage =
     gameQuestions.length > 0
-      ? Math.max(12, Math.round(((currentIndex + 1) / gameQuestions.length) * 100))
+      ? Math.max(10, Math.round(((currentIndex + 1) / gameQuestions.length) * 100))
       : 30;
 
   return (
     <div
-      className="astro-stage"
+      className={`astro-stage ${screen === 'howto' ? 'bg-right-character' : 'bg-left-character'}`}
       style={{
         backgroundImage: `url('${activeBg}')`
       }}
     >
-      {/* Barra superior com indicadores de Jogo + Botão de Rankings */}
+      {/* BARRA SUPERIOR */}
       <header className="astro-topbar">
-        {screen === 'playing' && (
-          <>
-            <div className="hud-pill-floating" title="Jogador e Turma">
-              <span>👤 {playerName} ({playerClass})</span>
-            </div>
+        <div className="topbar-left">
+          {screen !== 'home' && (
+            <button
+              className="btn-circle-home"
+              onClick={() => setScreen('home')}
+              title="Voltar ao Início"
+            >
+              <Home size={22} />
+            </button>
+          )}
+        </div>
 
-            <div className="hud-pill-floating" title="Vidas restantes">
-              {[...Array(MAX_LIVES)].map((_, i) => (
-                <Heart
-                  key={i}
-                  size={18}
-                  fill={i < lives ? '#22c55e' : 'transparent'}
-                  color={i < lives ? '#16a34a' : '#94a3b8'}
-                />
-              ))}
+        {/* Barra de Progresso Central (Ex: 3/10) idêntica à referência na tela de pergunta */}
+        {screen === 'playing' && !isAnswered && (
+          <div className="astro-progress-header">
+            <div className="astro-progress-track">
+              <div
+                className="astro-progress-fill"
+                style={{ width: `${progressPercentage}%` }}
+              />
             </div>
-
-            <div className="hud-pill-floating" title="Saúde do Planeta">
-              <span>🌍 Saúde: {planetHealth}%</span>
-            </div>
-
-            <div className="hud-pill-floating" title="Combo de respostas certas seguidas">
-              <Flame size={17} color={streak >= 2 ? '#f97316' : '#64748b'} />
-              <span>Combo: {streak}x</span>
-            </div>
-
-            <div className="hud-pill-floating" title="Tempo restante para responder">
-              <Timer size={17} color={timeLeft <= 6 ? '#ef4444' : '#6c38f8'} />
-              <span style={{ color: timeLeft <= 6 ? '#dc2626' : '#1d224c' }}>{timeLeft}s</span>
-            </div>
-
-            <div className="hud-pill-floating" title="Pontuação atual">
-              <Trophy size={17} color="#eab308" />
-              <span>{score} pts</span>
-            </div>
-          </>
+            <span className="astro-progress-text">
+              {currentIndex + 1}/{gameQuestions.length}
+            </span>
+          </div>
         )}
 
-        <button
-          className="btn-top-icon"
-          onClick={() => setShowRankingModal(true)}
-          title="Ver Rankings do 9º A e 9º B"
-        >
-          <Trophy size={16} color="#facc15" />
-          <span>Rankings (9º A / 9º B)</span>
-        </button>
+        <div className="topbar-right">
+          {screen === 'playing' && !isAnswered && (
+            <div className="hud-space-pill" title="Tempo restante">
+              <Timer size={16} color={timeLeft <= 6 ? '#f43f5e' : '#38bdf8'} />
+              <span style={{ color: timeLeft <= 6 ? '#fda4af' : '#e0f2fe' }}>{timeLeft}s</span>
+            </div>
+          )}
+
+          <button
+            className="btn-space-ranking"
+            onClick={() => setShowRankingModal(true)}
+            title="Ver Rankings do 9º A e 9º B"
+          >
+            <Trophy size={16} color="#facc15" />
+            <span>Rankings (9º A / 9º B)</span>
+          </button>
+        </div>
       </header>
 
-      {/* ÁREA CENTRAL / DIREITA DO PALCO */}
-      <main className="stage-content">
-        <div className="right-panel-wrapper">
-          {/* TELA 1: INÍCIO ("Verdadeiro ou Falso?") */}
-          {screen === 'home' && (
-            <div className="paper-card home-card">
-              <div className="corner-leaf top-left">
-                <CornerLeafSVG size={48} />
-              </div>
-              <div className="corner-leaf top-right">
-                <CornerLeafSVG size={48} />
-              </div>
-              <div className="corner-leaf bottom-left">
-                <CornerLeafSVG size={42} />
-              </div>
+      {/* PALCO PRINCIPAL */}
+      <main
+        className={`stage-content ${
+          screen === 'howto' ? 'align-left-panel' : 'align-right-panel'
+        }`}
+      >
+        {/* =======================================================
+            TELA 1: INÍCIO ("VERDADEIRO OU FALSO" + Botão COMEÇAR >)
+           ======================================================= */}
+        {screen === 'home' && (
+          <div className="astro-panel-column home-column">
+            <AstroLearnBrandLogo />
 
-              <h1 className="title-vf">
-                Verdadeiro
+            <div className="astro-glass-card home-glass-card">
+              <h1 className="astro-title-vf">
+                <span className="cyan-word">VERDADEIRO</span>
                 <br />
-                ou <span className="falso-word">Falso?</span>
+                OU FALSO
               </h1>
 
-              <p className="subtitle-vf">
-                Teste seus conhecimentos sobre
-                <br />
-                meio ambiente e sustentabilidade!
+              <p className="astro-subtitle">
+                Teste seus conhecimentos
+                <br />e explore o universo!
               </p>
 
-              <div className="paper-divider" />
-
-              <p className="instruction-vf">
-                Leia as afirmativas e escolha se
-                <br />
-                são verdadeiras ou falsas.
-              </p>
-
-              {/* Campos obrigatórios de Nome e Turma (9º A ou 9º B) */}
-              <div className="player-mini-inputs">
+              {/* Identificação do Aluno (Nome e Turma 9º A / 9º B) */}
+              <div className="astro-login-inputs">
                 <input
                   type="text"
-                  className="input-pill"
+                  className="astro-input-field"
                   placeholder="Digite seu nome *"
                   value={playerName}
                   onChange={(e) => {
@@ -426,246 +407,279 @@ export default function App() {
                     if (formError) setFormError('');
                   }}
                   maxLength={24}
-                  style={{
-                    width: '210px',
-                    borderColor: formError && !playerName.trim() ? '#ef4444' : undefined
-                  }}
                 />
+
                 <select
-                  className="input-pill"
+                  className="astro-input-field"
                   value={playerClass}
                   onChange={(e) => {
                     setPlayerClass(e.target.value);
                     if (formError) setFormError('');
                   }}
-                  style={{
-                    borderColor: formError && !playerClass ? '#ef4444' : undefined,
-                    cursor: 'pointer'
-                  }}
                 >
-                  <option value="">Escolha a turma *</option>
+                  <option value="">Turma (9º A ou 9º B) *</option>
                   <option value="9º A">9º A</option>
                   <option value="9º B">9º B</option>
                 </select>
               </div>
 
               {formError && (
-                <p
-                  style={{
-                    color: '#dc2626',
-                    fontSize: '0.88rem',
-                    fontWeight: 800,
-                    marginTop: '0.35rem',
-                    background: 'rgba(254, 226, 226, 0.9)',
-                    padding: '0.4rem 0.85rem',
-                    borderRadius: '12px',
-                    border: '1px solid #f87171'
-                  }}
+                <div className="astro-error-msg">
+                  <AlertCircle size={16} />
+                  <span>{formError}</span>
+                </div>
+              )}
+            </div>
+
+            <button onClick={handleGoToHowTo} className="btn-astro-gradient btn-start-large">
+              <span>COMEÇAR</span>
+              <ChevronRight size={26} strokeWidth={3} className="btn-chevron-icon" />
+            </button>
+          </div>
+        )}
+
+        {/* =======================================================
+            TELA 2: COMO FUNCIONA? (Card à Esquerda, Mascote à Direita)
+           ======================================================= */}
+        {screen === 'howto' && (
+          <div className="astro-panel-column howto-column">
+            <div className="astro-glass-card howto-glass-card">
+              <h2 className="howto-title">
+                COMO <span className="pink-word">FUNCIONA?</span>
+              </h2>
+
+              <div className="howto-steps-list">
+                <div className="howto-step-item">
+                  <div className="howto-icon-box blue-box">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <rect x="4" y="3" width="16" height="18" rx="3" stroke="#67e8f9" strokeWidth="2" />
+                      <path d="M8 8H16M8 12H16M8 16H12" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <p>
+                    Leia as afirmações
+                    <br />
+                    com atenção.
+                  </p>
+                </div>
+
+                <div className="howto-step-item">
+                  <div className="howto-icon-box purple-box">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path d="M6 18L18 6" stroke="#f0abfc" strokeWidth="2.2" strokeLinecap="round" />
+                      <path d="M5 8L7 10L11 6" stroke="#6ee7b7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M14 15L18 19M18 15L14 19" stroke="#fda4af" strokeWidth="2.2" strokeLinecap="round" />
+                    </svg>
+                  </div>
+                  <p>
+                    Escolha se a afirmação
+                    <br />é verdadeira ou falsa.
+                  </p>
+                </div>
+
+                <div className="howto-step-item">
+                  <div className="howto-icon-box star-box">
+                    <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+                      <path
+                        d="M12 3L14.8 8.7L21 9.6L16.5 14L17.6 20.2L12 17.3L6.4 20.2L7.5 14L3 9.6L9.2 8.7L12 3Z"
+                        fill="#facc15"
+                        stroke="#fef08a"
+                        strokeWidth="1.5"
+                      />
+                    </svg>
+                  </div>
+                  <p>
+                    Acerte o máximo de respostas
+                    <br />e conquiste sua pontuação!
+                  </p>
+                </div>
+              </div>
+
+              <button onClick={startGame} className="btn-astro-gradient btn-howto-understand">
+                <span>ENTENDI!</span>
+                <ChevronRight size={24} strokeWidth={3} className="btn-chevron-icon" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =======================================================
+            TELA 3: PERGUNTA EM ANDAMENTO (VERDADEIRO / FALSO)
+           ======================================================= */}
+        {screen === 'playing' && !isAnswered && currentQ && (
+          <div className="astro-panel-column question-column">
+            <div className="astro-glass-card question-glass-card">
+              <div className="question-planet-top">
+                <QuestionPlanetSVG />
+              </div>
+
+              <p className="astro-question-text">{currentQ.afirmativa}</p>
+
+              <div className="astro-vf-buttons">
+                <button
+                  type="button"
+                  className="btn-neon-vf btn-neon-true"
+                  onClick={() => handleAnswer(true)}
                 >
-                  ⚠️ {formError}
-                </p>
+                  <span className="vf-icon-circle">
+                    <Check size={20} strokeWidth={3.5} />
+                  </span>
+                  <span>VERDADEIRO</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-neon-vf btn-neon-false"
+                  onClick={() => handleAnswer(false)}
+                >
+                  <span className="vf-icon-circle">
+                    <X size={20} strokeWidth={3.5} />
+                  </span>
+                  <span>FALSO</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* =======================================================
+            TELAS 4 E 5: FEEDBACK ("ACERTOU!" ou "OPS!")
+           ======================================================= */}
+        {screen === 'playing' && isAnswered && currentQ && (
+          <div className="astro-panel-column feedback-column">
+            <div
+              className={`astro-glass-card feedback-glass-card ${
+                isCurrentCorrect ? 'card-correct' : 'card-wrong'
+              }`}
+            >
+              {/* Ícone Circular Brilhante no Topo do Card */}
+              <div
+                className={`feedback-top-orb ${
+                  isCurrentCorrect ? 'orb-correct' : 'orb-wrong'
+                }`}
+              >
+                {isCurrentCorrect ? (
+                  <Check size={40} strokeWidth={3.8} />
+                ) : (
+                  <X size={40} strokeWidth={3.8} />
+                )}
+              </div>
+
+              {/* Estrelinhas vetoriais decorativas quando acerta (sem emoji) */}
+              {isCurrentCorrect && (
+                <>
+                  <span className="sparkle-deco left-top">
+                    <SparkleStarSVG size={20} color="#f9a8d4" />
+                  </span>
+                  <span className="sparkle-deco left-bottom">
+                    <SparkleStarSVG size={15} color="#fde047" />
+                  </span>
+                  <span className="sparkle-deco right-mid">
+                    <SparkleStarSVG size={18} color="#67e8f9" />
+                  </span>
+                </>
               )}
 
-              <button onClick={startGame} className="btn-purple-3d btn-home-overlap">
-                <span>Começar</span>
-                <ArrowRight size={24} strokeWidth={3} />
-              </button>
-            </div>
-          )}
-
-          {/* TELA 2: PERGUNTA EM ANDAMENTO */}
-          {screen === 'playing' && !isAnswered && currentQ && (
-            <>
-              {/* Barra de Progresso 1/10 a 10/10 idêntica ao layout */}
-              <div className="progress-capsule">
-                <div className="progress-track">
-                  <div
-                    className="progress-fill"
-                    style={{ width: `${progressPercentage}%` }}
-                  />
-                </div>
-                <span className="progress-counter">
-                  {currentIndex + 1}/{gameQuestions.length}
-                </span>
-              </div>
-
-              {/* Card Pergaminho da Afirmativa */}
-              <div className="paper-card">
-                <div className="corner-leaf top-right">
-                  <CornerLeafSVG size={48} />
-                </div>
-
-                <div className="sprout-top-icon">
-                  <SproutIconSVG />
-                </div>
-
-                <p className="question-statement">{currentQ.afirmativa}</p>
-
-                <div className="vf-buttons-row">
-                  <button
-                    className="btn-answer-3d btn-true-3d"
-                    onClick={() => handleAnswer(true)}
-                  >
-                    <Check size={28} strokeWidth={3.5} />
-                    <span>Verdadeiro</span>
-                  </button>
-
-                  <button
-                    className="btn-answer-3d btn-false-3d"
-                    onClick={() => handleAnswer(false)}
-                  >
-                    <X size={28} strokeWidth={3.5} />
-                    <span>Falso</span>
-                  </button>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* TELAS 3 E 4: FEEDBACK ("Isso mesmo!" ou "Ops! Essa não é a resposta correta.") */}
-          {screen === 'playing' && isAnswered && currentQ && (
-            <div className="paper-card feedback-card">
-              <div className="corner-leaf top-right">
-                <CornerLeafSVG size={44} />
-              </div>
-
-              {/* Medalha Circular Verde (✓) ou Vermelha (✕) no topo do card */}
-              <div className={`status-circle-badge ${isCurrentCorrect ? 'correct' : 'wrong'}`}>
-                {isCurrentCorrect ? (
-                  <Check size={36} strokeWidth={3.8} />
-                ) : (
-                  <X size={36} strokeWidth={3.8} />
-                )}
-              </div>
-
-              <h2 className={`feedback-title ${isCurrentCorrect ? 'correct' : 'wrong'}`}>
-                {isCurrentCorrect ? (
-                  'Isso mesmo!'
-                ) : selectedAnswer === 'timeout' ? (
-                  'Ops! O tempo acabou.'
-                ) : (
-                  <>
-                    Ops! Essa não é a resposta
-                    <br />
-                    correta.
-                  </>
-                )}
+              <h2
+                className={`astro-feedback-heading ${
+                  isCurrentCorrect ? 'heading-correct' : 'heading-wrong'
+                }`}
+              >
+                {isCurrentCorrect ? 'ACERTOU!' : 'OPS!'}
               </h2>
 
-              <p className="feedback-body-text">{currentQ.explicacao}</p>
-
-              {/* Caixa com Lâmpada 3D e resumo educativo */}
-              <div className={`lightbulb-box ${isCurrentCorrect ? 'correct' : 'wrong'}`}>
-                <div className="bulb-icon-wrap">
-                  <LightbulbSVG />
-                </div>
-                <p className="lightbulb-text">{currentQ.dica}</p>
-              </div>
-
-              {/* Botão Roxo "Próxima pergunta ->" sobreposto no canto inferior direito */}
-              <button onClick={nextQuestion} className="btn-purple-3d btn-next-overlap">
-                <span>
-                  {lives <= 0 || currentIndex + 1 >= gameQuestions.length
-                    ? 'Ver resultado'
-                    : 'Próxima pergunta'}
-                </span>
-                <ArrowRight size={22} strokeWidth={3} />
-              </button>
-            </div>
-          )}
-
-          {/* TELA DE RESULTADO FINAL */}
-          {screen === 'result' && (
-            <div className="paper-card feedback-card">
-              <div className="corner-leaf top-left">
-                <CornerLeafSVG size={46} />
-              </div>
-              <div className="corner-leaf top-right">
-                <CornerLeafSVG size={46} />
-              </div>
-
-              <div className={`status-circle-badge ${lives > 0 ? 'correct' : 'wrong'}`}>
-                <Trophy size={32} />
-              </div>
-
-              <h2 className={`feedback-title ${lives > 0 ? 'correct' : 'wrong'}`}>
-                {lives > 0 ? 'Parabéns! Missão Concluída!' : 'Fim das Vidas! Continue Tentando!'}
-              </h2>
-
-              <p className="feedback-body-text">
-                <strong>{playerName}</strong> (Turma <strong>{playerClass}</strong>), você acertou{' '}
-                <strong>
-                  {correctCount} de {gameQuestions.length}
-                </strong>{' '}
-                afirmativas, conquistou <strong>{score} pontos</strong> (maior sequência:{' '}
-                <strong>{maxStreak}x</strong>) e deixou a saúde do planeta em{' '}
-                <strong>{planetHealth}%</strong>!
+              <p className="astro-feedback-sub">
+                {isCurrentCorrect
+                  ? 'Muito bem!'
+                  : selectedAnswer === 'timeout'
+                  ? 'O tempo acabou nesta pergunta.'
+                  : 'Essa não é a resposta correta.'}
               </p>
 
-              <div className="lightbulb-box correct" style={{ marginBottom: '1.2rem' }}>
-                <div className="bulb-icon-wrap">
-                  <LightbulbSVG />
-                </div>
-                <p className="lightbulb-text">
-                  Sua pontuação já foi registrada no <strong>Ranking do {playerClass}</strong>!
-                </p>
+              {/* Explicação pedagógica concisa */}
+              <div className="astro-explanation-box">
+                <p>{currentQ.explicacao}</p>
               </div>
 
-              <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-                <button
-                  onClick={startGame}
-                  className="btn-purple-3d"
-                  style={{ fontSize: '1.1rem', padding: '0.7rem 1.4rem' }}
-                >
-                  <RotateCcw size={18} />
-                  <span>Jogar Novamente</span>
+              <button onClick={nextQuestion} className="btn-astro-gradient btn-next-question">
+                <span>
+                  {currentIndex + 1 >= gameQuestions.length
+                    ? 'VER PONTUAÇÃO'
+                    : 'PRÓXIMA PERGUNTA'}
+                </span>
+                <ChevronRight size={22} strokeWidth={3} className="btn-chevron-icon" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* =======================================================
+            TELA 6: JOGO CONCLUÍDO! (8/10 + JOGAR NOVAMENTE / VOLTAR)
+           ======================================================= */}
+        {screen === 'result' && (
+          <div className="astro-panel-column result-column">
+            <div className="astro-glass-card result-glass-card">
+              <h2 className="result-heading">JOGO CONCLUÍDO!</h2>
+              <p className="result-sub-label">Sua pontuação foi:</p>
+
+              <div className="result-score-hero">
+                <GoldStarSVG />
+                <span className="result-big-fraction">
+                  {correctCount}/{gameQuestions.length}
+                </span>
+              </div>
+
+              <p className="result-encouragement">
+                Mandou muito bem!
+                <br />
+                Continue explorando o universo
+                <br />
+                do conhecimento!
+              </p>
+
+              <div className="result-student-badge">
+                <User size={15} />
+                <span>
+                  <strong>{playerName}</strong> ({playerClass}) • <strong>{score} pts</strong> salvos no Ranking
+                </span>
+              </div>
+
+              <div className="result-actions-row">
+                <button onClick={startGame} className="btn-result-again">
+                  <RotateCcw size={18} strokeWidth={2.6} />
+                  <span>JOGAR NOVAMENTE</span>
                 </button>
 
                 <button
                   onClick={() => {
-                    setPlayerName('');
-                    setPlayerClass('');
-                    setFormError('');
                     setScreen('home');
                   }}
-                  className="btn-answer-3d btn-false-3d"
-                  style={{ fontSize: '1.1rem', padding: '0.7rem 1.4rem' }}
+                  className="btn-result-back"
                 >
-                  <UserPlus size={18} />
-                  <span>Novo Jogador</span>
-                </button>
-
-                <button
-                  onClick={() => setShowRankingModal(true)}
-                  className="btn-answer-3d btn-true-3d"
-                  style={{ fontSize: '1.1rem', padding: '0.7rem 1.4rem' }}
-                >
-                  <Trophy size={18} />
-                  <span>Ver Rankings</span>
+                  <Home size={18} strokeWidth={2.6} />
+                  <span>VOLTAR</span>
                 </button>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </main>
 
       {/* MODAL COM OS DOIS RANKINGS SEPARADOS (9º A e 9º B) */}
       {showRankingModal && (
         <div className="modal-backdrop" onClick={() => setShowRankingModal(false)}>
           <div
-            className="modal-paper"
-            style={{ maxWidth: '880px' }}
+            className="astro-modal-card"
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.6rem' }}>
-                <Trophy size={26} color="#eab308" />
-                Rankings por Turma • 9º A e 9º B
+            <div className="astro-modal-header">
+              <h2>
+                <Trophy size={26} color="#facc15" />
+                <span>Rankings AstroLearn • 9º A e 9º B</span>
               </h2>
               <button
                 onClick={() => setShowRankingModal(false)}
-                className="btn-top-icon"
-                style={{ background: '#1c224d' }}
+                className="btn-space-ranking"
               >
                 <X size={18} /> Fechar
               </button>
@@ -675,12 +689,14 @@ export default function App() {
               {/* Coluna 1: Ranking 9º A */}
               <div className="ranking-column-box">
                 <div className="ranking-col-header">
-                  <h3>🏆 Ranking 9º A</h3>
+                  <h3>
+                    <Award size={19} color="#67e8f9" />
+                    <span>Turma 9º A</span>
+                  </h3>
                   {ranking9A.length > 0 && (
                     <button
                       onClick={() => clearClassRanking('9º A')}
-                      className="btn-top-icon"
-                      style={{ background: '#dc2626', padding: '0.28rem 0.65rem', fontSize: '0.76rem' }}
+                      className="btn-clear-rank"
                     >
                       <Trash2 size={13} /> Limpar 9º A
                     </button>
@@ -688,26 +704,22 @@ export default function App() {
                 </div>
 
                 {ranking9A.length === 0 ? (
-                  <p className="empty-ranking-msg">
-                    Nenhum aluno do 9º A jogou ainda.
-                  </p>
+                  <p className="empty-ranking-msg">Nenhum aluno do 9º A jogou ainda.</p>
                 ) : (
                   ranking9A.map((r, i) => (
                     <div key={r.id} className={`ranking-row ${i === 0 ? 'first' : ''}`}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 900, width: '28px' }}>
-                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                        <span className={`rank-position-badge pos-${i + 1}`}>
+                          {i + 1}º
                         </span>
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '1rem' }}>{r.name}</div>
-                          <div style={{ fontSize: '0.78rem', opacity: 0.75, fontWeight: 700 }}>
-                            Acertos: {r.correct}/{QUESTIONS_PER_MATCH} • Planeta: {r.planetHealth}%
+                          <div className="rank-student-name">{r.name}</div>
+                          <div className="rank-student-meta">
+                            {r.correct}/{QUESTIONS_PER_MATCH} acertos
                           </div>
                         </div>
                       </div>
-                      <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.15rem', color: '#1f7a34' }}>
-                        {r.score} pts
-                      </div>
+                      <div className="rank-student-pts">{r.score} pts</div>
                     </div>
                   ))
                 )}
@@ -716,12 +728,14 @@ export default function App() {
               {/* Coluna 2: Ranking 9º B */}
               <div className="ranking-column-box">
                 <div className="ranking-col-header">
-                  <h3>🏆 Ranking 9º B</h3>
+                  <h3>
+                    <Award size={19} color="#67e8f9" />
+                    <span>Turma 9º B</span>
+                  </h3>
                   {ranking9B.length > 0 && (
                     <button
                       onClick={() => clearClassRanking('9º B')}
-                      className="btn-top-icon"
-                      style={{ background: '#dc2626', padding: '0.28rem 0.65rem', fontSize: '0.76rem' }}
+                      className="btn-clear-rank"
                     >
                       <Trash2 size={13} /> Limpar 9º B
                     </button>
@@ -729,26 +743,22 @@ export default function App() {
                 </div>
 
                 {ranking9B.length === 0 ? (
-                  <p className="empty-ranking-msg">
-                    Nenhum aluno do 9º B jogou ainda.
-                  </p>
+                  <p className="empty-ranking-msg">Nenhum aluno do 9º B jogou ainda.</p>
                 ) : (
                   ranking9B.map((r, i) => (
                     <div key={r.id} className={`ranking-row ${i === 0 ? 'first' : ''}`}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                        <span style={{ fontSize: '1.25rem', fontWeight: 900, width: '28px' }}>
-                          {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `${i + 1}º`}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem' }}>
+                        <span className={`rank-position-badge pos-${i + 1}`}>
+                          {i + 1}º
                         </span>
                         <div>
-                          <div style={{ fontWeight: 800, fontSize: '1rem' }}>{r.name}</div>
-                          <div style={{ fontSize: '0.78rem', opacity: 0.75, fontWeight: 700 }}>
-                            Acertos: {r.correct}/{QUESTIONS_PER_MATCH} • Planeta: {r.planetHealth}%
+                          <div className="rank-student-name">{r.name}</div>
+                          <div className="rank-student-meta">
+                            {r.correct}/{QUESTIONS_PER_MATCH} acertos
                           </div>
                         </div>
                       </div>
-                      <div style={{ fontFamily: 'Fredoka, sans-serif', fontWeight: 700, fontSize: '1.15rem', color: '#1f7a34' }}>
-                        {r.score} pts
-                      </div>
+                      <div className="rank-student-pts">{r.score} pts</div>
                     </div>
                   ))
                 )}

@@ -14,6 +14,11 @@ import {
   Award
 } from 'lucide-react';
 import { INITIAL_QUESTIONS } from './data/questions';
+import {
+  registrarXpNoBanco,
+  buscarRankingDoBanco,
+  limparRankingTurmaNoBanco
+} from './services/xpApi';
 
 const QUESTION_TIME = 30; // segundos por pergunta
 const QUESTIONS_PER_MATCH = 10; // 10 perguntas sorteadas por partida (1/10 a 10/10)
@@ -152,8 +157,18 @@ export default function App() {
   const [timeLeft, setTimeLeft] = useState(QUESTION_TIME);
   const [selectedAnswer, setSelectedAnswer] = useState(null); // true | false | 'timeout' | null
   const [isAnswered, setIsAnswered] = useState(false);
+  const [xpRewardInfo, setXpRewardInfo] = useState(null);
 
   const timerRef = useRef(null);
+
+  // Sincronizar ranking inicial com o Banco de Dados AstroLearn (se o backend estiver ativo)
+  useEffect(() => {
+    buscarRankingDoBanco('jogo9').then((dbRanking) => {
+      if (dbRanking && dbRanking.length > 0) {
+        setRanking(dbRanking);
+      }
+    });
+  }, []);
 
   // Pré-carregar todas as 6 cenas espaciais para transição instantânea
   useEffect(() => {
@@ -258,13 +273,15 @@ export default function App() {
     }
   };
 
-  // Concluir partida e salvar no Ranking da turma (9º A ou 9º B)
+  // Concluir partida, salvar no Ranking da turma (9º A ou 9º B) e liberar XP no Banco de Dados
   const finishGame = () => {
+    const xpLiberado = Math.max(50, score);
     const newEntry = {
       id: Date.now(),
       name: playerName.trim(),
       turma: playerClass,
       score,
+      xpGanho: xpLiberado,
       correct: correctCount
     };
 
@@ -273,7 +290,25 @@ export default function App() {
       return b.score - a.score;
     });
     setRanking(updated);
+    setXpRewardInfo({ xpGanhoNaPartida: xpLiberado, xpTotalAcumulado: xpLiberado, sincronizado: false });
     setScreen('result');
+
+    registrarXpNoBanco({
+      nome: playerName.trim(),
+      turma: playerClass,
+      jogo: 'jogo9',
+      pontuacao: score,
+      xpGanho: xpLiberado,
+      acertos: correctCount,
+      detalhes: `${correctCount}/${gameQuestions.length} acertos no Verdadeiro ou Falso`
+    }).then((res) => {
+      if (res && res.dados) {
+        setXpRewardInfo({
+          ...res.dados,
+          sincronizado: Boolean(res.sucesso)
+        });
+      }
+    });
 
     if (correctCount >= Math.ceil(gameQuestions.length * 0.6)) {
       confetti({
@@ -286,6 +321,7 @@ export default function App() {
 
   const clearClassRanking = (turmaAlvo) => {
     setRanking((prev) => prev.filter((item) => item.turma !== turmaAlvo));
+    limparRankingTurmaNoBanco('jogo9', turmaAlvo);
   };
 
   const ranking9A = ranking.filter((r) => r.turma === '9º A');
@@ -640,7 +676,8 @@ export default function App() {
               <div className="result-student-badge">
                 <User size={15} />
                 <span>
-                  <strong>{playerName}</strong> ({playerClass}) • <strong>{score} pts</strong> salvos no Ranking
+                  <strong>{playerName}</strong> ({playerClass}) • <strong>+{xpRewardInfo ? xpRewardInfo.xpGanhoNaPartida : score} XP</strong> liberados para a Loja AstroLearn
+                  {xpRewardInfo?.xpTotalAcumulado ? ` (Saldo Total: ${xpRewardInfo.xpTotalAcumulado} XP)` : ''}
                 </span>
               </div>
 

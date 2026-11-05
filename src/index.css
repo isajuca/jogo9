@@ -236,21 +236,20 @@ h1, h2, h3, .font-rounded {
 }
 
 .astro-logo-img-wrap {
-  width: 68px;
-  height: 68px;
+  width: 82px;
+  height: 62px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 50%;
-  overflow: hidden;
-  filter: drop-shadow(0 0 14px rgba(56, 189, 248, 0.55));
+  filter:
+    drop-shadow(0 0 12px rgba(139, 92, 246, 0.7))
+    drop-shadow(0 0 3px rgba(255, 255, 255, 0.35));
 }
 
 .astro-official-logo-img {
   width: 100%;
   height: 100%;
   object-fit: contain;
-  mix-blend-mode: screen;
 }
 
 .astro-logo-text {

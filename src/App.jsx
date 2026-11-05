@@ -17,7 +17,7 @@ import { INITIAL_QUESTIONS } from './data/questions';
 import {
   registrarXpNoBanco,
   buscarRankingDoBanco,
-  limparRankingTurmaNoBanco
+  filtrarRankingExpirado
 } from './services/xpApi';
 
 const QUESTION_TIME = 30; // segundos por pergunta
@@ -48,7 +48,7 @@ function AstroLearnBrandLogo() {
     <div className="astro-brand-logo">
       <div className="astro-logo-img-wrap">
         <img
-          src="/assets/logo_astrolearn.jpg"
+          src="/assets/logo_astrolearn.png"
           alt="Logo AstroLearn"
           className="astro-official-logo-img"
         />
@@ -144,7 +144,7 @@ export default function App() {
   // Ranking separado por turma (9º A e 9º B)
   const [ranking, setRanking] = useState(() => {
     const saved = localStorage.getItem('astrolearn_ranking_turmas_v1');
-    return saved ? JSON.parse(saved) : [];
+    return saved ? filtrarRankingExpirado(JSON.parse(saved)) : [];
   });
 
   // Estados da partida
@@ -165,10 +165,23 @@ export default function App() {
   useEffect(() => {
     buscarRankingDoBanco('jogo9').then((dbRanking) => {
       if (dbRanking && dbRanking.length > 0) {
-        setRanking(dbRanking);
+        setRanking(filtrarRankingExpirado(dbRanking));
       }
     });
   }, []);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setRanking((prev) => filtrarRankingExpirado(prev));
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    if (showRankingModal) {
+      setRanking((prev) => filtrarRankingExpirado(prev));
+    }
+  }, [showRankingModal]);
 
   // Pré-carregar todas as 6 cenas espaciais para transição instantânea
   useEffect(() => {
@@ -278,6 +291,7 @@ export default function App() {
     const xpLiberado = Math.max(50, score);
     const newEntry = {
       id: Date.now(),
+      createdAt: Date.now(),
       name: playerName.trim(),
       turma: playerClass,
       score,
@@ -317,11 +331,6 @@ export default function App() {
         origin: { y: 0.6 }
       });
     }
-  };
-
-  const clearClassRanking = (turmaAlvo) => {
-    setRanking((prev) => prev.filter((item) => item.turma !== turmaAlvo));
-    limparRankingTurmaNoBanco('jogo9', turmaAlvo);
   };
 
   const ranking9A = ranking.filter((r) => r.turma === '9º A');
@@ -730,14 +739,6 @@ export default function App() {
                     <Award size={19} color="#67e8f9" />
                     <span>Turma 9º A</span>
                   </h3>
-                  {ranking9A.length > 0 && (
-                    <button
-                      onClick={() => clearClassRanking('9º A')}
-                      className="btn-clear-rank"
-                    >
-                      <Trash2 size={13} /> Limpar 9º A
-                    </button>
-                  )}
                 </div>
 
                 {ranking9A.length === 0 ? (
@@ -769,14 +770,6 @@ export default function App() {
                     <Award size={19} color="#67e8f9" />
                     <span>Turma 9º B</span>
                   </h3>
-                  {ranking9B.length > 0 && (
-                    <button
-                      onClick={() => clearClassRanking('9º B')}
-                      className="btn-clear-rank"
-                    >
-                      <Trash2 size={13} /> Limpar 9º B
-                    </button>
-                  )}
                 </div>
 
                 {ranking9B.length === 0 ? (
